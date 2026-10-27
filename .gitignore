@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+*.egg-info/
+
+# Test and tooling
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Generated benchmark output
+results/*.json
+results/*.csv
+
+# Kubernetes and local environment
+.env
+*.kubeconfig
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+.vscode/

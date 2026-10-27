@@ -1,0 +1,164 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: soka-cloud
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: vm-1-small
+  namespace: soka-cloud
+  labels:
+    app: soka-vm
+    vm-id: "1"
+    host-id: "host-1"
+spec:
+  nodeSelector:
+    soka.its.ac.id/host-id: "host-1"
+  containers:
+    - name: vm-worker
+      image: soka-vm-worker:latest
+      imagePullPolicy: IfNotPresent
+      ports:
+        - containerPort: 8000
+      env:
+        - {name: VM_ID, value: "1"}
+        - {name: VM_NAME, value: "VM1_Small"}
+        - {name: HOST_ID, value: "host-1"}
+        - {name: MIPS, value: "50.0"}
+        - {name: BW_MBPS, value: "100.0"}
+        - {name: COST_PER_MI, value: "0.03"}
+        - {name: CPU_LIMIT_MILLICORES, value: "250"}
+      resources:
+        requests: {cpu: "250m", memory: "128Mi"}
+        limits: {cpu: "250m", memory: "256Mi"}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vm-1-service
+  namespace: soka-cloud
+spec:
+  type: NodePort
+  selector: {vm-id: "1"}
+  ports: [{port: 8000, targetPort: 8000, nodePort: 30081}]
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: vm-2-medium
+  namespace: soka-cloud
+  labels:
+    app: soka-vm
+    vm-id: "2"
+    host-id: "host-1"
+spec:
+  nodeSelector:
+    soka.its.ac.id/host-id: "host-1"
+  containers:
+    - name: vm-worker
+      image: soka-vm-worker:latest
+      imagePullPolicy: IfNotPresent
+      ports:
+        - containerPort: 8000
+      env:
+        - {name: VM_ID, value: "2"}
+        - {name: VM_NAME, value: "VM2_Medium"}
+        - {name: HOST_ID, value: "host-1"}
+        - {name: MIPS, value: "100.0"}
+        - {name: BW_MBPS, value: "200.0"}
+        - {name: COST_PER_MI, value: "0.12"}
+        - {name: CPU_LIMIT_MILLICORES, value: "500"}
+      resources:
+        requests: {cpu: "500m", memory: "256Mi"}
+        limits: {cpu: "500m", memory: "512Mi"}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vm-2-service
+  namespace: soka-cloud
+spec:
+  type: NodePort
+  selector: {vm-id: "2"}
+  ports: [{port: 8000, targetPort: 8000, nodePort: 30082}]
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: vm-3-large
+  namespace: soka-cloud
+  labels:
+    app: soka-vm
+    vm-id: "3"
+    host-id: "host-2"
+spec:
+  nodeSelector:
+    soka.its.ac.id/host-id: "host-2"
+  containers:
+    - name: vm-worker
+      image: soka-vm-worker:latest
+      imagePullPolicy: IfNotPresent
+      ports:
+        - containerPort: 8000
+      env:
+        - {name: VM_ID, value: "3"}
+        - {name: VM_NAME, value: "VM3_Large"}
+        - {name: HOST_ID, value: "host-2"}
+        - {name: MIPS, value: "200.0"}
+        - {name: BW_MBPS, value: "250.0"}
+        - {name: COST_PER_MI, value: "0.24"}
+        - {name: CPU_LIMIT_MILLICORES, value: "1000"}
+      resources:
+        requests: {cpu: "1000m", memory: "512Mi"}
+        limits: {cpu: "1000m", memory: "1024Mi"}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vm-3-service
+  namespace: soka-cloud
+spec:
+  type: NodePort
+  selector: {vm-id: "3"}
+  ports: [{port: 8000, targetPort: 8000, nodePort: 30083}]
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: vm-4-xlarge
+  namespace: soka-cloud
+  labels:
+    app: soka-vm
+    vm-id: "4"
+    host-id: "host-2"
+spec:
+  nodeSelector:
+    soka.its.ac.id/host-id: "host-2"
+  containers:
+    - name: vm-worker
+      image: soka-vm-worker:latest
+      imagePullPolicy: IfNotPresent
+      ports:
+        - containerPort: 8000
+      env:
+        - {name: VM_ID, value: "4"}
+        - {name: VM_NAME, value: "VM4_XLarge"}
+        - {name: HOST_ID, value: "host-2"}
+        - {name: MIPS, value: "300.0"}
+        - {name: BW_MBPS, value: "300.0"}
+        - {name: COST_PER_MI, value: "0.35"}
+        - {name: CPU_LIMIT_MILLICORES, value: "1500"}
+      resources:
+        requests: {cpu: "1000m", memory: "512Mi"}
+        limits: {cpu: "1500m", memory: "1536Mi"}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vm-4-service
+  namespace: soka-cloud
+spec:
+  type: NodePort
+  selector: {vm-id: "4"}
+  ports: [{port: 8000, targetPort: 8000, nodePort: 30084}]
