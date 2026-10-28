@@ -1,44 +1,74 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-export PATH="$HOME/.local/bin:$PATH"
+CLUSTER_NAME="soka-datacenter"
+CONTEXT_NAME="kind-${CLUSTER_NAME}"
+IMAGE_NAME="soka-vm-worker:phase3"
+NODE_IMAGE="kindest/node:v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5"
+BIN_DIR="${SOKA_BIN_DIR:-${HOME}/.local/bin}"
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
+RECREATE="${1:-}"
+
+export PATH="${BIN_DIR}:${PATH}"
 cd "${PROJECT_ROOT}"
-CLUSTER_NAME="soka-datacenter"
-if command -v docker.exe >/dev/null 2>&1; then
-    DOCKER_BIN="docker.exe"
-    VM_WORKER_DIR="$(wslpath -w "${PROJECT_ROOT}/vm_worker")"
-else
-    DOCKER_BIN="docker"
-    VM_WORKER_DIR="${PROJECT_ROOT}/vm_worker"
-fi
-if command -v kind.exe >/dev/null 2>&1; then
-    KIND_BIN="kind.exe"
-    KUBECTL_BIN="kubectl.exe"
-else
-    KIND_BIN="kind"
-    KUBECTL_BIN="kubectl"
-fi
 
-echo "=== [1/5] Building VM Worker Docker Image ==="
-"${DOCKER_BIN}" build -t soka-vm-worker:latest "${VM_WORKER_DIR}"
+for command_name in docker kind kubectl curl; do
+    if ! command -v "${command_name}" >/dev/null 2>&1; then
+        echo "Missing required command: ${command_name}" >&2
+        exit 1
+    fi
+done
 
-echo "=== [2/5] Creating Multi-Node Kubernetes Cluster ==="
-if "${KIND_BIN}" get clusters | grep -q "^${CLUSTER_NAME}$"; then
-    echo "Cluster ${CLUSTER_NAME} already exists."
-else
-    "${KIND_BIN}" create cluster --config ./k8s/kind-cluster.yaml
+docker info >/dev/null
+CPU_COUNT="$(getconf _NPROCESSORS_ONLN)"
+MEMORY_KIB="$(awk '/MemTotal/ {print $2}' /proc/meminfo)"
+if (( CPU_COUNT < 4 )); then
+    echo "At least 4 logical CPUs are required; found ${CPU_COUNT}" >&2
+    exit 1
+fi
+if (( MEMORY_KIB < 4194304 )); then
+    echo "At least 4 GiB RAM is required" >&2
+    exit 1
+fi
+if [[ "$(stat -fc %T /sys/fs/cgroup)" != "cgroup2fs" ]]; then
+    echo "cgroup v2 is required for CPU measurement" >&2
+    exit 1
 fi
 
-echo "=== [3/5] Loading Docker Image ==="
-"${KIND_BIN}" load docker-image soka-vm-worker:latest --name "${CLUSTER_NAME}"
+if [[ "${RECREATE}" == "--recreate" ]] && kind get clusters | grep -Fxq "${CLUSTER_NAME}"; then
+    kind delete cluster --name "${CLUSTER_NAME}"
+fi
 
-echo "=== [4/5] Deploying 4 VM Pods ==="
-"${KUBECTL_BIN}" apply -f ./k8s/vm-pods.yaml
+if kind get clusters | grep -Fxq "${CLUSTER_NAME}"; then
+    echo "Using existing cluster ${CLUSTER_NAME}; pass --recreate to rebuild it with the pinned node image."
+else
+    kind create cluster \
+        --config ./k8s/kind-cluster.yaml \
+        --image "${NODE_IMAGE}" \
+        --wait 180s
+fi
 
-echo "=== [5/5] Waiting for VM Pods ==="
-"${KUBECTL_BIN}" wait --namespace soka-cloud --for=condition=ready pod --all --timeout=120s
+kubectl config use-context "${CONTEXT_NAME}" >/dev/null
+docker build --pull --tag "${IMAGE_NAME}" ./vm_worker
+kind load docker-image "${IMAGE_NAME}" --name "${CLUSTER_NAME}"
 
-"${KUBECTL_BIN}" get nodes -o wide --show-labels
-"${KUBECTL_BIN}" get pods -n soka-cloud -o wide
+kubectl delete pod \
+    --namespace soka-cloud \
+    --selector app=soka-vm \
+    --ignore-not-found \
+    --wait=true
+kubectl apply --filename ./k8s/vm-pods.yaml
+kubectl wait \
+    --namespace soka-cloud \
+    --for=condition=Ready \
+    pod \
+    --selector app=soka-vm \
+    --timeout=180s
+
+kubectl get nodes --output wide --show-labels
+kubectl get pods --namespace soka-cloud --output wide
+for port in 30081 30082 30083 30084; do
+    curl --fail --silent --show-error "http://127.0.0.1:${port}/health" >/dev/null
+done
+echo "All four worker health checks passed."

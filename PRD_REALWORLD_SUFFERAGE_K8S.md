@@ -1,6 +1,15 @@
 # 📄 PRODUCT REQUIREMENTS DOCUMENT (PRD) & TECHNICAL BLUEPRINT
 ## Real-World Heuristic Cloud Task Scheduling (Sufferage & CCTSA) on Multi-Node Kubernetes
 
+> **Status implementasi (28 Oktober 2026):** Bagian blueprint kode pada dokumen
+> ini adalah rancangan awal dan bukan lagi sumber implementasi. Implementasi
+> terverifikasi berada di `scheduler/`, `vm_worker/`, `k8s/`, dan
+> `run_benchmark.py`; metode serta hasil aktual dijelaskan di `README.md`.
+> Koreksi utama: node `kind` adalah node logis berbasis container, worker adalah
+> Pod (bukan VM hardware), Standard Sufferage mengikuti Figure 2 Maheswaran,
+> dan CCTSA tidak memakai weighted score/fallback gabungan yang tidak ada pada
+> paper.
+
 | Atribut Dokumen | Detail Spesifikasi |
 | :--- | :--- |
 | **Nama Produk / Proyek** | **SOKA Real-World Heuristic Cloud Scheduler (`SOKA-RealWorld-Sufferage-K8s`)** |
@@ -8,7 +17,7 @@
 | **Mata Kuliah / Kelas** | Strategi Optimasi Komputasi Awan (SOKA) — Kelas C (2026) |
 | **Dosen Pengampu** | Dr. Ir. Henning Titi Ciptaningtyas, S.Kom., M.Kom. |
 | **Tim Pengembang (Kelompok 4)** | 1. **M. Hikari Reiziq Rakhmadinta (`5027241079`)** — *Siapin Provider Cloud & Briefing*<br>2. **I Dewa Made Satya Raditya (`5027231051`) [Mas Satya]** — *Bikin GitHub & Coding Inisialisasi 1 DC, 2 Host, dan 2 VM/Host*<br>3. **Muhammad Rakha Hananditya Rauf (`5027241015`) [Rakha]** — *Implementasi Algoritma Sufferage (CCTSA & Sufferage)*<br>4. **Ahmad Wildan Fawwaz (`5027241001`) [Wildan Fawwaz]** — *Testing Kalau Ada Error & Persiapan Demo*<br>5. **Theodorus Aaron Ugraha (`5027241056`) [Aron]** — *Laporan Algoritma Sufferage* |
-| **Target Infrastruktur** | **Kubernetes Multi-Node (`kind`)**: 1 Datacenter Cluster, 2 Host Worker Nodes, 4 Isolated VM Pods (2 VM/Host) |
+| **Target Infrastruktur** | **Kubernetes Multi-Node (`kind`)**: 1 cluster, 2 logical worker nodes, 4 isolated worker Pods (2 Pod/node) |
 | **Algoritma Inti (Lean Scope)** | **1. CCTSA (Dual-Sufferage)** • **2. Standard Sufferage** • **3. Round Robin (Baseline)** |
 | **Status & Target Waktu** | **Sprint 3 Hari (Senin s.d. Rabu Pengerjaan) + Kamis Khusus Testing & Demo** |
 
@@ -39,7 +48,7 @@
 
 Pada proyek sebelumnya ([`Heuristic-Task-Scheduling-Algorithm`](https://github.com/HikariReiziq/Heuristic-Task-Scheduling-Algorithm)), Kelompok 4 telah membuktikan secara teoretis di atas simulator diskrit bahwa algoritma **Standard Sufferage** (Maheswaran dkk., 1999) dan **CCTSA / Cost and Completion Time based Sufferage Algorithm** (Krishnaveni dkk., 2019) mampu mengatasi masalah *NP-Hard Cloud Task Scheduling* dengan menyeimbangkan waktu penyelesaian (*Makespan*) dan biaya sewa (*Total Cost*).
 
-Untuk **Demo - 3**, produk ini menghadirkan **implementasi nyata (*Real-World Cloud Implementation*)** di atas klaster **Kubernetes Multi-Node (`kind`)**. Sistem ini membangun **1 Datacenter (`kind-soka-datacenter`)**, **2 Host Fisik/Worker Node (`soka-host-1`, `soka-host-2`)**, dan **4 VM Heterogen (2 VM Pod per Host)** yang dibatasi kecepatannya secara riil oleh kernel Linux menggunakan *cgroups CPU limits* (`250m`, `500m`, `1000m`, `1500m`). Setiap *task/cloudlet* yang dijadwalkan oleh broker benar-benar dikirim melalui jaringan HTTP ke Pod VM tujuan, mengeksekusi beban komputasi CPU nyata (*SHA-256 cryptographic hashing*) dan pemrosesan payload memori/jaringan, serta mengembalikan waktu eksekusi *wall-clock* nyata untuk dievaluasi.
+Untuk **Demo - 3**, produk ini menghadirkan **implementasi nyata (*Real-World Cloud Implementation*)** di atas klaster **Kubernetes Multi-Node (`kind`)**. Sistem ini membangun **1 cluster (`soka-datacenter`)**, **2 worker node logis (`host-1`, `host-2`)**, dan **4 worker Pod heterogen (2 Pod per node)** yang dibatasi kecepatannya secara riil oleh kernel Linux menggunakan *cgroups CPU limits* (`250m`, `500m`, `1000m`, `1500m`). Setiap task yang dijadwalkan broker dikirim melalui HTTP ke Pod tujuan, memproses seluruh payload dan beban PBKDF2 nyata, lalu mengembalikan waktu *wall-clock*, checksum, serta statistik cgroup untuk dievaluasi.
 
 ---
 
@@ -50,7 +59,7 @@ Untuk **Demo - 3**, produk ini menghadirkan **implementasi nyata (*Real-World Cl
 2. **Kebutuhan Bukti Eksperimental di Infrastruktur Nyata**:
    Dosen menuntut pembuktian bahwa algoritma heuristik **Sufferage / CCTSA** benar-benar dapat diintegrasikan sebagai *Custom Cloud Broker / Task Dispatcher* pada infrastruktur cloud riil (**minimal 1 Datacenter, 2 Host, dan 2 VM per Host**).
 3. **Keterbatasan Waktu Saat Live Demo**:
-   Menjalankan 5 algoritma sekaligus atau ribuan task di atas CPU sungguhan akan memakan waktu terlalu lama saat sesi presentasi. Oleh karena itu, sistem harus dirancang **ramping (*lean*)** dengan fokus pada **3 algoritma paling representatif** (**CCTSA**, **Standard Sufferage**, dan **Round Robin**) serta beban kerja terkalibrasi yang tuntas dalam **15–30 detik** secara *live*.
+   Sistem difokuskan pada **3 algoritma paling representatif** (**CCTSA**, **Standard Sufferage**, dan **Round Robin**). Demo singkat menggunakan satu trial skenario paper; eksperimen laporan memakai beberapa trial tanpa memotong workload.
 
 ---
 
@@ -79,7 +88,7 @@ Sistem wajib mencatat dan membandingkan nilai **Estimasi Simulasi** vs **Penguku
 | Prioritas | Fitur / Modul | Deskripsi |
 | :--- | :--- | :--- |
 | **Must Have** | **Multi-Node K8s Cluster (1 DC, 2 Host, 4 VM)** | Konfigurasi `kind` 1 Control Plane + 2 Worker Nodes (`host-1`, `host-2`) dan 4 Pod VM dengan `nodeSelector` serta `resources.limits.cpu`. |
-| **Must Have** | **Real CPU & I/O VM Worker Service** | HTTP Server di tiap Pod VM dengan *Single-Worker Queue* yang menjalankan beban CPU `SHA-256` nyata sesuai `MI` dan buffer data sesuai `Mb`. |
+| **Must Have** | **Real CPU & I/O VM Worker Service** | HTTP server pada tiap worker Pod dengan antrean serial yang menjalankan PBKDF2 dan membaca seluruh payload sesuai data `Mb`, tanpa sleep atau cap. |
 | **Must Have** | **3 Core Schedulers (CCTSA, Sufferage, RR)** | Modul penjadwalan yang menghitung matriks ETC/ECC dan mendistribusikan task secara nyata ke 4 Pod VM. |
 | **Must Have** | **MEMORY.md State Tracker** | Berkas pelacak progres otomatis bagi 5 anggota tim dan AI Agent mereka di GitHub. |
 | **Should Have** | **Live Web Dashboard (`localhost:8090`)** | Antarmuka web interaktif untuk menampilkan topologi K8s (`kubectl`), menjalankan benchmark live, dan mengunduh grafik/CSV laporan. |
@@ -92,7 +101,7 @@ Sistem wajib mencatat dan membandingkan nilai **Estimasi Simulasi** vs **Penguku
 - **US-01 (Deployment Infrastruktur K8s)**: Sebagai anggota tim, saya dapat menjalankan satu perintah `./scripts/setup_cluster.sh` untuk membangun 1 Datacenter cluster, 2 Host Worker Nodes, dan 4 VM Pods heterogen.
   - *Acceptance Criteria*: `kubectl get nodes` menampilkan `soka-datacenter-control-plane`, `soka-datacenter-worker` (`host-1`), dan `soka-datacenter-worker2` (`host-2`) berstatus `Ready`. `kubectl get pods -n soka-cloud -o wide` menampilkan 2 Pod di `worker` dan 2 Pod di `worker2` berstatus `Running`.
 - **US-02 (Penegakan Heterogenitas CPU Nyata)**: Sebagai penguji, ketika saya mengirim task dengan beban `100 MI` ke `vm-1-small` (`250m` CPU) dan `vm-4-xlarge` (`1500m` CPU), waktu eksekusi nyata di `vm-4-xlarge` terbukti jauh lebih cepat (~5–6x lebih singkat) akibat *Linux cgroups CPU throttling*.
-- **US-03 (Eksekusi Benchmark 3 Algoritma)**: Sebagai presenter Demo-3, saya dapat menjalankan Skenario 1 (10 Task Paper) dan Skenario 2 (24 Task GoCJ) melalui CLI maupun Web Dashboard, di mana **Standard Sufferage** dan **CCTSA** terbukti mengungguli **Round Robin** secara nyata.
+- **US-03 (Eksekusi Benchmark 3 Algoritma)**: Sebagai presenter Demo-3, saya dapat menjalankan Skenario 1 (10 task paper) dan Skenario 2 (24 task GoCJ) melalui CLI, menyimpan seluruh trial mentah, dan membandingkan hasil tanpa mensyaratkan algoritma tertentu selalu menang.
 
 ---
 
@@ -113,12 +122,12 @@ flowchart TB
     subgraph K8sCluster ["Datacenter 1: Kubernetes Cluster (kind-soka-datacenter)"]
         API["Control Plane Node\n(soka-datacenter-control-plane)"]
 
-        subgraph Node1 ["Host Fisik 1: soka-datacenter-worker (label: host-1)"]
+        subgraph Node1 ["Logical Node 1: soka-datacenter-worker (label: host-1)"]
             Pod1["Pod: vm-1-small\nCPU Limit: 250m | RAM: 256Mi\n50 MIPS | 100 Mbps | 0.03 INR/MI\nNodePort: 30081"]
             Pod2["Pod: vm-2-medium\nCPU Limit: 500m | RAM: 512Mi\n100 MIPS | 200 Mbps | 0.12 INR/MI\nNodePort: 30082"]
         end
 
-        subgraph Node2 ["Host Fisik 2: soka-datacenter-worker2 (label: host-2)"]
+        subgraph Node2 ["Logical Node 2: soka-datacenter-worker2 (label: host-2)"]
             Pod3["Pod: vm-3-large\nCPU Limit: 1000m | RAM: 1024Mi\n200 MIPS | 250 Mbps | 0.24 INR/MI\nNodePort: 30083"]
             Pod4["Pod: vm-4-xlarge\nCPU Limit: 1500m | RAM: 1536Mi\n300 MIPS | 300 Mbps | 0.35 INR/MI\nNodePort: 30084"]
         end
@@ -182,6 +191,11 @@ SOKA-RealWorld-Sufferage-K8s/
 
 ## 8. Complete Code Blueprints (Panduan & Kodingan Lengkap yang Perlu Dibangun)
 
+> **Catatan:** Listing pada bagian 8 dipertahankan sebagai histori rancangan
+> awal. Jangan menyalinnya ke implementasi. Ia memuat sleep bandwidth, cap
+> payload, dataset GoCJ acak, fallback/weighted score CCTSA non-paper, dan bug
+> satu-winner pada Sufferage. Kode aktual dan tes di repository menggantikannya.
+
 > **INSTRUKSI UNTUK AI CODING AGENT**:
 > Gunakan kode acuan di bawah ini untuk membangun setiap file di repository. Seluruh nama variabel, port (`30081`–`30084`), label node (`host-1`, `host-2`), dan kontrak JSON sudah disinkronkan secara presisi.
 
@@ -190,7 +204,7 @@ SOKA-RealWorld-Sufferage-K8s/
 ### 8.1 Konfigurasi Kubernetes Cluster (1 DC, 2 Host, 4 VM Pods)
 
 #### File 1: `k8s/kind-cluster.yaml`
-Konfigurasi cluster `kind` dengan **1 Control Plane** (memetakan port `30081`–`30084` ke laptop host agar tidak perlu `kubectl port-forward` manual) dan **2 Worker Nodes** (`host-1` & `host-2`) sebagai 2 Host Fisik:
+Konfigurasi cluster `kind` dengan **1 Control Plane** (memetakan port `30081`–`30084` hanya ke loopback laptop) dan **2 Worker Nodes logis** (`host-1` & `host-2`):
 
 ```yaml
 kind: Cluster
@@ -1436,7 +1450,7 @@ kubectl get pods -n soka-cloud -o wide
 #### File 11: `tests/test_scheduler.py`
 Unit test otomatis menggunakan `unittest` bawaan Python untuk memvalidasi bahwa:
 1. Semua task teralokasi tepat satu kali pada **CCTSA**, **Standard Sufferage**, dan **Round Robin**.
-2. **CCTSA** menghasilkan total biaya (*Total Cost*) yang lebih hemat dibandingkan **Standard Sufferage**, sementara kedua algoritma heuristik menghasilkan *Makespan* dan *Degree of Imbalance (DI)* yang jauh lebih baik dibandingkan **Round Robin**.
+2. Seluruh metrik dilaporkan apa adanya. Tes tidak memaksa CCTSA lebih murah atau heuristik selalu lebih cepat daripada Round Robin; peringkat bergantung workload dan model biaya.
 
 ---
 

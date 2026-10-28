@@ -1,6 +1,7 @@
-FROM python:3.11-slim
+FROM python:3.11-slim@sha256:96909ccf1d448a93a966e9fc47a607781b0f22975f3dc17a4cec879600d0a827
 WORKDIR /app
 COPY worker_server.py /app/worker_server.py
 EXPOSE 8000
-ENV PYTHONUNBUFFERED=1
+ENV PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1
+USER 65532:65532
 CMD ["python3", "/app/worker_server.py"]

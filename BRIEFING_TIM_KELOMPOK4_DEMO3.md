@@ -7,6 +7,11 @@
 > - **TargetRepositori Baru (Demo-3)**: `SOKA-RealWorld-Sufferage-K8s` *(Silakan dibuat oleh PIC GitHub Tim)*
 > - **Dokumen Pasangan**: Wajib digunakan bersama file **`PRD_REALWORLD_SUFFERAGE_K8S.md`**
 
+> **Koreksi implementasi (28 Oktober 2026):** `README.md` dan kode aktual
+> menjadi acuan teknis. Node `kind` adalah node logis pada satu host fisik,
+> worker adalah Pod, dan rumus weighted-score/fallback gabungan CCTSA pada draft
+> awal tidak berasal dari paper sehingga tidak digunakan.
+
 ---
 
 ## 📋 DAFTAR ISI
@@ -49,7 +54,7 @@ flowchart TD
     end
 
     subgraph RealWorld ["Tahap Demo-3: Real-World Kubernetes Cluster"]
-        R_DC["1 Datacenter:\nKubernetes Cluster (kind-soka-datacenter)"] --> R_Host["2 Host Fisik:\n2 K8s Worker Nodes (soka-host-1 & soka-host-2)"]
+        R_DC["1 Datacenter:\nKubernetes Cluster (kind-soka-datacenter)"] --> R_Host["2 Logical Nodes:\n2 K8s Worker Nodes (soka-host-1 & soka-host-2)"]
         R_Host --> R_VM["4 VM (2 per Host):\n4 Isolated Worker Pods (CPU Cgroups: 250m, 500m, 1000m, 1500m)"]
         R_VM --> R_Task["Real Cloudlet Execution:\nHTTP Job Dispatch + Komputasi CPU SHA-256 Nyata + Payload I/O"]
     end
@@ -132,12 +137,9 @@ Oleh karena itu, Kelompok 4 mengadopsi **CCTSA (Krishnaveni dkk., 2019)** yang m
 2. **Kriteria Pemilihan Task Prioritas ($Ch\_Task$)**:
    - Pindai daftar task yang belum terjadwal dan pilih task yang memenuhi kondisi urgensi ganda:
      $$(SVCT_i > FMICT_i) \quad \mathbf{AND} \quad (SVC_i < FMXC_i)$$
-   - **Aturan Fallback**: Jika pada suatu putaran tidak ada task yang memenuhi syarat ketat di atas secara bersamaan, pilih task dengan skor gabungan sufferage ternormalisasi tertinggi:
-     $$\text{CombinedSufferage}_i = \frac{SVCT_i}{FMICT_i + \epsilon} + \frac{SVC_i}{FMXC_i + \epsilon}$$
-3. **Pemilihan VM Secara Multi-Objektif (Menyeimbangkan Waktu & Biaya)**:
-   - Task terpilih ($Ch\_Task$) ditugaskan ke $VM_j$ yang meminimalkan skor gabungan waktu dan biaya:
-     $$\text{Score}_j = w_{\text{time}} \cdot \left(\frac{CT_{i,j}}{\max_k CT_{i,k}}\right) + w_{\text{cost}} \cdot \left(\frac{CC_{i,j}}{\max_k CC_{i,k}}\right)$$
-     *(Default bobot seimbang: $w_{\text{time}} = 0.5$ dan $w_{\text{cost}} = 0.5$)*.
+   - **Aturan fallback paper**: jika tidak ada task yang memenuhi kondisi, gunakan task berindeks tertinggi yang masih tersisa (`Tn`). Paper tidak mendefinisikan skor gabungan ternormalisasi.
+3. **Pemilihan VM**:
+   - Task terpilih ditugaskan ke resource dengan completion time minimum. Karena paper hanya menyebut "cost suitable" tanpa ambang formal, implementasi memakai completion cost untuk memecahkan nilai completion time yang sama, kemudian ID worker.
 4. Perbarui *Ready Time* ($RT_j$) dan *Ready Cost* ($RC_j$) pada $VM_j$, lalu ulangi sampai seluruh task teralokasi.
 
 ---
@@ -148,7 +150,7 @@ Di repositori simulasi sebelumnya kita memiliki 5 algoritma. Namun, untuk **Real
 
 | No | Algoritma | Peran dalam Demo-3 & Laporan Akhir | Fungsi Objektif |
 | :-: | :--- | :--- | :--- |
-| **1** | **CCTSA (*Proposed*)** | Algoritma unggulan Kelompok 4 (Dual-Sufferage) yang membuktikan penghematan biaya cloud sekaligus menjaga performa waktu. | **Multi-Objektif**: Minimasi *Makespan* + Minimasi *Total Cost* |
+| **1** | **CCTSA (*Proposed*)** | Dual-sufferage waktu/biaya sesuai pseudocode paper; hasil waktu dan modeled cost dilaporkan tanpa klaim kemenangan wajib. | **Multi-Objektif**: Completion time + modeled cost |
 | **2** | **Standard Sufferage** | Algoritma Sufferage murni (Maheswaran 1999) sebagai pembuktian keampuhan mekanisme resolusi konflik Sufferage di atas VM heterogen. | **Single-Objektif**: Minimasi *Makespan* & Pemerataan Beban (*DI*) |
 | **3** | **Round Robin (RR)** | Baseline penjadwal statis (siklik bergiliran tanpa melihat spesifikasi VM) untuk menunjukkan kondisi *Before vs After* penggunaan heuristik Sufferage. | Statis (Tanpa Optimasi) |
 
@@ -311,7 +313,7 @@ Untuk menjalankan cluster **1 Datacenter, 2 Host, dan 4 VM** di komputer masing-
 ### 6.4 Perintah Verifikasi Saat Cluster Sudah Dibangun
 Setelah script `./scripts/setup_cluster.sh` dijalankan, Anda dapat membuktikan kepada dosen saat Demo-3 bahwa infrastruktur memiliki **1 Datacenter, 2 Host, dan 2 VM per Host (Total 4 VM)** dengan 2 perintah berikut:
 ```bash
-# 1. Bukti 1 Datacenter (Control Plane) & 2 Host Fisik (soka-datacenter-worker & worker2):
+# 1. Bukti 1 cluster (Control Plane) & 2 logical worker nodes:
 kubectl get nodes -o wide --show-labels
 
 # 2. Bukti 4 VM Heterogen (2 VM di Host-1, 2 VM di Host-2):
