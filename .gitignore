@@ -4,23 +4,78 @@ __pycache__/
 *.pyo
 .venv/
 venv/
+env/
 *.egg-info/
+dist/
+build/
+.ipynb_checkpoints/
 
 # Test and tooling
 .pytest_cache/
 .mypy_cache/
+.ruff_cache/
+.tox/
 .coverage
+.coverage.*
 htmlcov/
 
 # Generated benchmark output
 results/*.json
 results/*.csv
+results/*.log
+
+# Logs, temp, and backup files
+*.log
+*.tmp
+*.bak
+*.swp
+*.swo
+*~
+nohup.out
+
+# Secrets and credentials (never commit)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+id_rsa*
+id_ed25519*
+*.secret
+*.secrets
+secrets.*
+credentials*.json
+service-account*.json
 
 # Kubernetes and local environment
-.env
 *.kubeconfig
+kubeconfig*
+.kube/
+kind-kubeconfig*
 
-# OS/editor files
+# Local tool binaries (installed by scripts/install_k8s_tools.sh)
+.local/
+bin/kind
+bin/kubectl
+
+# Node (if dashboard tooling is added)
+node_modules/
+
+# Docker local overrides
+docker-compose.override.yml
+
+# OS/editor/IDE files
 .DS_Store
 Thumbs.db
 .vscode/
+.idea/
+*.code-workspace
+.agents/
+.gemini/
+.antigravity/
+.opencode/
+.codex/
+.copilot/

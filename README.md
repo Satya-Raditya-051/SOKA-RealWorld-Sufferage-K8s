@@ -176,6 +176,22 @@ Hasil dapat berbeda tergantung pada mesin dan beban proses latar belakang. File
 hasil lokal mentah merupakan keluaran yang dihasilkan dan sengaja diabaikan
 oleh Git.
 
+## Dashboard web
+
+Visualisasi live demo tersedia pada `http://localhost:8090`
+(`dashboard/server.py`, Python stdlib + Chart.js, tanpa dependensi pip):
+
+```bash
+python3 dashboard/server.py
+```
+
+Dashboard menampilkan topologi langsung (1 DC → 2 host → 4 VM Pod dari
+`kubectl` + `/health` worker), konsol untuk menjalankan benchmark dari browser
+(`POST /api/run`), KPI serta chart perbandingan CCTSA vs Standard Sufferage vs
+Round Robin (makespan nyata/prediksi, biaya model, utilisasi, imbalance),
+Gantt eksekusi per tugas, tabel peringkat, dan ekspor CSV. Detail API ada di
+`dashboard/README.md`.
+
 ## Referensi utama
 
 - Maheswaran et al., *Dynamic Mapping of a Class of Independent Tasks onto

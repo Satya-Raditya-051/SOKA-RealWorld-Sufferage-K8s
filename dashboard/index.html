@@ -1,0 +1,1355 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SOKA · Real-World Sufferage Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg-base: #070a12;
+    --bg-card: rgba(15, 23, 42, 0.88);
+    --bg-card-hover: rgba(20, 30, 52, 0.94);
+    --border-soft: rgba(255, 255, 255, 0.08);
+    --border-strong: rgba(255, 255, 255, 0.16);
+    --text-primary: #f1f5f9;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+    --accent-cctsa: #10b981;
+    --accent-sufferage: #8b5cf6;
+    --accent-rr: #3b82f6;
+    --accent-amber: #f59e0b;
+    --accent-cyan: #06b6d4;
+    --danger: #ef4444;
+    --radius: 16px;
+    --mono: "JetBrains Mono", ui-monospace, monospace;
+    --sans: "Plus Jakarta Sans", system-ui, sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: var(--sans);
+    background:
+      radial-gradient(1100px 500px at 12% -8%, rgba(16, 185, 129, 0.14), transparent 60%),
+      radial-gradient(900px 480px at 88% 4%, rgba(139, 92, 246, 0.13), transparent 60%),
+      radial-gradient(800px 500px at 50% 110%, rgba(59, 130, 246, 0.10), transparent 60%),
+      var(--bg-base);
+    color: var(--text-primary);
+    min-height: 100vh;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .container {
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: 28px 22px 60px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    padding: 26px;
+    backdrop-filter: blur(12px);
+    transition: border-color 0.2s ease;
+  }
+  .card:hover { border-color: var(--border-strong); }
+
+  .card-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1.05rem;
+    font-weight: 700;
+    margin-bottom: 6px;
+    letter-spacing: 0.01em;
+  }
+  .card-subtitle {
+    color: var(--text-secondary);
+    font-size: 0.86rem;
+    margin-bottom: 20px;
+  }
+
+  /* ------------------------------------------------------------- hero */
+  .hero {
+    position: relative;
+    overflow: hidden;
+    background:
+      linear-gradient(135deg, rgba(16, 185, 129, 0.16), rgba(59, 130, 246, 0.10) 55%, rgba(139, 92, 246, 0.14));
+    border-color: rgba(16, 185, 129, 0.35);
+    padding: 34px 30px;
+  }
+  .badge-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+  .pill {
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 5px 12px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid var(--border-soft);
+    color: var(--text-secondary);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .pill.ok { color: #6ee7b7; border-color: rgba(16, 185, 129, 0.4); background: rgba(16, 185, 129, 0.10); }
+  .pill.warn { color: #fcd34d; border-color: rgba(245, 158, 11, 0.4); background: rgba(245, 158, 11, 0.10); }
+  .pill.err { color: #fca5a5; border-color: rgba(239, 68, 68, 0.4); background: rgba(239, 68, 68, 0.10); }
+
+  .hero h1 {
+    font-size: clamp(1.7rem, 3.4vw, 2.7rem);
+    font-weight: 800;
+    line-height: 1.15;
+    background: linear-gradient(92deg, #34d399, #22d3ee 45%, #a78bfa);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    margin-bottom: 10px;
+  }
+  .hero p { color: var(--text-secondary); max-width: 900px; font-size: 0.95rem; }
+  .hero .mono-note { font-family: var(--mono); font-size: 0.78rem; color: var(--text-muted); margin-top: 12px; }
+
+  /* --------------------------------------------------------- topology */
+  .topology-overview {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  .stat-chip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 8px 14px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-soft);
+    color: var(--text-secondary);
+  }
+  .stat-chip b { color: var(--text-primary); font-family: var(--mono); }
+  .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; background: var(--text-muted); }
+  .dot.green { background: var(--accent-cctsa); box-shadow: 0 0 8px rgba(16, 185, 129, 0.7); }
+  .dot.red { background: var(--danger); box-shadow: 0 0 8px rgba(239, 68, 68, 0.7); }
+  .dot.amber { background: var(--accent-amber); box-shadow: 0 0 8px rgba(245, 158, 11, 0.7); }
+
+  .topo-dc {
+    border: 1px dashed rgba(255, 255, 255, 0.18);
+    border-radius: 14px;
+    padding: 18px;
+    background: rgba(255, 255, 255, 0.02);
+  }
+  .topo-dc-label {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent-cyan);
+    margin-bottom: 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .host-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 14px; }
+  .host-card {
+    background: rgba(255, 255, 255, 0.035);
+    border: 1px solid var(--border-soft);
+    border-radius: 13px;
+    padding: 16px;
+  }
+  .host-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 14px;
+    font-weight: 700;
+    font-size: 0.92rem;
+  }
+  .host-head .node-meta { font-family: var(--mono); font-size: 0.7rem; color: var(--text-muted); font-weight: 500; }
+  .vm-list { display: flex; flex-direction: column; gap: 10px; }
+  .vm-card {
+    border: 1px solid var(--border-soft);
+    border-left: 3px solid var(--accent-cctsa);
+    background: rgba(15, 23, 42, 0.7);
+    border-radius: 10px;
+    padding: 12px 14px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 4px 10px;
+  }
+  .vm-card.down { border-left-color: var(--danger); }
+  .vm-name { font-weight: 700; font-size: 0.88rem; }
+  .vm-endpoint { font-family: var(--mono); font-size: 0.7rem; color: var(--text-muted); }
+  .vm-stats {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    margin-top: 6px;
+    padding-top: 8px;
+    border-top: 1px dashed rgba(255, 255, 255, 0.08);
+  }
+  .vm-stats b { color: var(--text-primary); font-weight: 600; }
+  .vm-status-badge { font-size: 0.68rem; font-weight: 700; padding: 3px 9px; border-radius: 999px; align-self: start; }
+  .vm-status-badge.ok { background: rgba(16, 185, 129, 0.15); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.35); }
+  .vm-status-badge.down { background: rgba(239, 68, 68, 0.15); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.35); }
+
+  /* ---------------------------------------------------------- terminal */
+  .terminal {
+    background: #05070d;
+    border: 1px solid var(--border-soft);
+    border-radius: 14px;
+    overflow: hidden;
+  }
+  .terminal-bar {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 11px 16px;
+    background: rgba(255, 255, 255, 0.045);
+    border-bottom: 1px solid var(--border-soft);
+    flex-wrap: wrap;
+  }
+  .traffic { display: flex; gap: 7px; }
+  .traffic span { width: 12px; height: 12px; border-radius: 50%; }
+  .traffic .r { background: #ff5f57; } .traffic .y { background: #febc2e; } .traffic .g { background: #28c840; }
+  .terminal-title { font-family: var(--mono); font-size: 0.75rem; color: var(--text-muted); flex: 1; min-width: 180px; }
+  .term-btn {
+    font-family: var(--sans);
+    font-size: 0.76rem;
+    font-weight: 700;
+    padding: 7px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--border-strong);
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .term-btn:hover:not(:disabled) { background: rgba(255, 255, 255, 0.13); transform: translateY(-1px); }
+  .term-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .term-btn.primary { background: rgba(16, 185, 129, 0.18); border-color: rgba(16, 185, 129, 0.5); color: #6ee7b7; }
+  .term-btn.danger { background: rgba(239, 68, 68, 0.15); border-color: rgba(239, 68, 68, 0.5); color: #fca5a5; }
+  .trials-input {
+    width: 62px;
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    padding: 6px 8px;
+    border-radius: 8px;
+    border: 1px solid var(--border-strong);
+    background: rgba(0, 0, 0, 0.4);
+    color: var(--text-primary);
+    text-align: center;
+  }
+  .term-label { font-size: 0.72rem; color: var(--text-muted); font-weight: 600; }
+  .terminal-status {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 16px;
+    font-family: var(--mono);
+    font-size: 0.74rem;
+    color: var(--accent-amber);
+    background: rgba(245, 158, 11, 0.06);
+    border-bottom: 1px solid var(--border-soft);
+  }
+  .terminal-status.visible { display: flex; }
+  .spinner {
+    width: 13px; height: 13px;
+    border: 2px solid rgba(245, 158, 11, 0.25);
+    border-top-color: var(--accent-amber);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    flex-shrink: 0;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .terminal-screen {
+    height: 290px;
+    overflow-y: auto;
+    padding: 16px 18px;
+    font-family: var(--mono);
+    font-size: 0.76rem;
+    line-height: 1.7;
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: #a7f3d0;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.15) transparent;
+  }
+  .terminal-screen .ts-dim { color: var(--text-muted); }
+  .terminal-screen .ts-err { color: #fca5a5; }
+  .terminal-screen .ts-ok { color: #6ee7b7; }
+  .terminal-screen .ts-warn { color: #fcd34d; }
+
+  /* -------------------------------------------------------------- tabs */
+  .tabs { display: flex; gap: 8px; flex-wrap: wrap; border-bottom: 1px solid var(--border-soft); padding-bottom: 0; }
+  .tab-btn {
+    font-family: var(--sans);
+    font-size: 0.84rem;
+    font-weight: 700;
+    padding: 11px 20px;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: all 0.15s ease;
+  }
+  .tab-btn:hover { color: var(--text-secondary); }
+  .tab-btn.active { color: var(--text-primary); border-bottom-color: var(--accent-cctsa); }
+
+  /* -------------------------------------------------------------- kpi */
+  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(215px, 1fr)); gap: 14px; }
+  .kpi-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-soft);
+    border-radius: 14px;
+    padding: 18px 20px;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.18s ease, border-color 0.18s ease;
+  }
+  .kpi-card:hover { transform: translateY(-3px); border-color: var(--border-strong); }
+  .kpi-card::after {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 3px;
+    background: var(--kpi-accent, var(--accent-cctsa));
+  }
+  .kpi-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.09em; color: var(--text-muted); font-weight: 700; }
+  .kpi-value { font-family: var(--mono); font-size: 1.65rem; font-weight: 600; margin-top: 8px; color: var(--text-primary); }
+  .kpi-meta { font-size: 0.76rem; color: var(--text-secondary); margin-top: 5px; }
+  .kpi-meta b { color: var(--kpi-accent, var(--accent-cctsa)); font-weight: 700; }
+
+  /* ------------------------------------------------------------ charts */
+  .chart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(430px, 1fr)); gap: 18px; }
+  .chart-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-soft);
+    border-radius: 14px;
+    padding: 20px;
+  }
+  .chart-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+  .chart-title { font-size: 0.92rem; font-weight: 700; }
+  .chart-note { font-size: 0.72rem; color: var(--text-muted); font-family: var(--mono); }
+  .chart-box { position: relative; height: 280px; }
+
+  /* ------------------------------------------------------------- gantt */
+  .gantt-controls { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-bottom: 18px; }
+  .select {
+    font-family: var(--sans);
+    font-size: 0.82rem;
+    font-weight: 600;
+    padding: 9px 14px;
+    border-radius: 9px;
+    border: 1px solid var(--border-strong);
+    background: rgba(15, 23, 42, 0.95);
+    color: var(--text-primary);
+    cursor: pointer;
+  }
+  .gantt-legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 0.75rem; color: var(--text-secondary); }
+  .gantt-legend span { display: flex; align-items: center; gap: 6px; }
+  .legend-swatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+  .gantt-timeline { display: flex; flex-direction: column; gap: 7px; }
+  .gantt-axis {
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    padding-left: 118px;
+    margin-bottom: 4px;
+  }
+  .gantt-row { display: flex; align-items: center; gap: 10px; }
+  .gantt-label {
+    width: 108px;
+    flex-shrink: 0;
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    text-align: right;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .gantt-track {
+    flex: 1;
+    height: 24px;
+    background: rgba(255, 255, 255, 0.035);
+    border-radius: 6px;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+  }
+  .gantt-bar {
+    position: absolute;
+    top: 3px;
+    height: 18px;
+    border-radius: 4px;
+    min-width: 3px;
+    transition: filter 0.15s ease;
+  }
+  .gantt-bar:hover { filter: brightness(1.35); }
+  .gantt-bar.host-1 { background: linear-gradient(90deg, #10b981, #34d399); }
+  .gantt-bar.host-2 { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+  .gantt-empty { color: var(--text-muted); font-size: 0.85rem; padding: 24px 0; text-align: center; }
+
+  /* ------------------------------------------------------------- table */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  thead th {
+    text-align: left;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border-strong);
+    white-space: nowrap;
+  }
+  tbody td {
+    padding: 13px 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    font-family: var(--mono);
+    color: var(--text-secondary);
+    white-space: nowrap;
+  }
+  tbody tr { transition: background 0.15s ease; }
+  tbody tr:hover { background: rgba(255, 255, 255, 0.035); }
+  td.cell-primary { color: var(--text-primary); }
+  .rank-badge {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--sans);
+    font-weight: 800;
+    font-size: 0.75rem;
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-secondary);
+  }
+  .rank-1 { background: linear-gradient(135deg, #fbbf24, #d97706); color: #1c1917; }
+  .rank-2 { background: linear-gradient(135deg, #e2e8f0, #94a3b8); color: #1c1917; }
+  .rank-3 { background: linear-gradient(135deg, #d97706, #92400e); color: #fde68a; }
+  .algo-pill { display: inline-flex; align-items: center; gap: 8px; font-family: var(--sans); font-weight: 700; color: var(--text-primary); }
+  .algo-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .best-mark { color: var(--accent-cctsa); font-weight: 700; }
+  .cell-range { font-size: 0.74rem; color: var(--text-muted); }
+
+  /* ------------------------------------------------------------ export */
+  .export-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px; }
+  .export-box {
+    border: 1px solid var(--border-soft);
+    border-radius: 12px;
+    padding: 18px;
+    background: rgba(255, 255, 255, 0.03);
+  }
+  .export-box h4 { font-size: 0.88rem; margin-bottom: 6px; }
+  .export-box p { font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 14px; }
+  .btn {
+    display: inline-block;
+    font-family: var(--sans);
+    font-size: 0.79rem;
+    font-weight: 700;
+    padding: 9px 16px;
+    border-radius: 9px;
+    border: 1px solid var(--border-strong);
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-primary);
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.15s ease;
+  }
+  .btn:hover { background: rgba(255, 255, 255, 0.13); transform: translateY(-1px); }
+  .btn.accent { background: rgba(16, 185, 129, 0.16); border-color: rgba(16, 185, 129, 0.45); color: #6ee7b7; }
+  .meta-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; font-family: var(--mono); font-size: 0.73rem; color: var(--text-secondary); }
+  .meta-list div { padding: 9px 12px; background: rgba(255, 255, 255, 0.03); border-radius: 8px; border: 1px solid var(--border-soft); word-break: break-all; }
+  .meta-list b { color: var(--text-primary); font-weight: 600; }
+
+  .empty-state {
+    text-align: center;
+    padding: 46px 20px;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+  }
+  .empty-state .big { font-size: 2.2rem; margin-bottom: 12px; }
+
+  .team-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 14px;
+  }
+  .team-member {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-soft);
+    border-radius: 14px;
+    padding: 18px 16px;
+    text-align: center;
+    transition: transform .2s ease, border-color .2s ease, background .2s ease;
+  }
+  .team-member:hover {
+    transform: translateY(-4px);
+    border-color: var(--accent-cctsa);
+    background: var(--bg-card-hover);
+  }
+  .team-avatar {
+    width: 52px; height: 52px;
+    margin: 0 auto 12px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 1.1rem; color: #fff;
+    background: linear-gradient(135deg, var(--accent-cctsa), var(--accent-sufferage));
+  }
+  .team-member h4 { margin: 0 0 4px; font-size: .95rem; color: var(--text-primary); }
+  .team-member .nrp { font-family: var(--mono); font-size: .8rem; color: var(--accent-cyan); }
+  .team-member .role { margin: 8px 0 0; font-size: .78rem; color: var(--text-secondary); line-height: 1.45; }
+
+  footer {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.76rem;
+    padding-top: 6px;
+    line-height: 1.8;
+  }
+  footer .mono { font-family: var(--mono); }
+
+  @media (max-width: 992px) {
+    .chart-grid { grid-template-columns: 1fr; }
+    .gantt-label { width: 76px; font-size: 0.62rem; }
+    .gantt-axis { padding-left: 86px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- ============================================================ HERO -->
+  <section class="card hero">
+    <div class="badge-row">
+      <span class="pill">SOKA 2026 · ITS Surabaya</span>
+      <span class="pill">Kelompok 4 · Demo 3</span>
+      <span class="pill">Kind Cluster · soka-datacenter</span>
+      <span class="pill" id="heroStatusPill">memeriksa status...</span>
+      <span class="pill">Dashboard :8090</span>
+    </div>
+    <h1>Real-World Sufferage Scheduling Dashboard</h1>
+    <p>
+      Pemantauan langsung penjadwalan tugas nyata di atas 4 Pod Kubernetes heterogen.
+      Perbandingan <b>CCTSA</b>, <b>Standard Sufferage</b>, dan <b>Round Robin</b> berdasarkan
+      makespan nyata, biaya model, utilisasi, serta degree of imbalance — semua diukur dari
+      eksekusi PBKDF2 + transfer payload sungguhan (tanpa simulasi CloudSim, tanpa sleep palsu).
+    </p>
+    <div class="mono-note" id="heroMeta">results/realworld_summary.json · memuat...</div>
+  </section>
+
+  <!-- ======================================================== TOPOLOGI -->
+  <section class="card">
+    <div class="card-title">🗺️ Topologi Klaster Langsung</div>
+    <div class="card-subtitle">
+      1 Datacenter → 2 Host (kind worker) → 4 VM Pod dengan NodePort 30081–30084 ·
+      data dari <span style="font-family:var(--mono)">kubectl</span> + <span style="font-family:var(--mono)">GET /health</span> tiap worker (auto-refresh 15 dtk)
+    </div>
+    <div class="topology-overview" id="topoOverview">
+      <div class="stat-chip"><span class="dot"></span> memuat status klaster...</div>
+    </div>
+    <div class="topo-dc">
+      <div class="topo-dc-label">
+        <span>🛰️ Datacenter: soka-datacenter (namespace: soka-cloud)</span>
+        <button class="term-btn" onclick="loadStatus(true)">⟳ Refresh</button>
+      </div>
+      <div class="host-grid" id="hostGrid">
+        <div class="host-card"><div class="host-head">Memuat...</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================================================== TERMINAL -->
+  <section class="card">
+    <div class="card-title">🖥️ Konsol Benchmark Langsung</div>
+    <div class="card-subtitle">
+      Menjalankan <span style="font-family:var(--mono)">python3 run_benchmark.py</span> sungguhan di cluster
+      (kalibrasi → plan → dispatch paralel per VM → 20 metrik) dan memperbarui hasil di dashboard.
+    </div>
+    <div class="terminal">
+      <div class="terminal-bar">
+        <div class="traffic"><span class="r"></span><span class="y"></span><span class="g"></span></div>
+        <div class="terminal-title">soka-benchmark — run_benchmark.py</div>
+        <span class="term-label">trials</span>
+        <input class="trials-input" id="trialsInput" type="number" min="1" max="50" value="3" />
+        <button class="term-btn primary" id="btnRunAll" onclick="runBenchmark('all')">▶ Run All</button>
+        <button class="term-btn" id="btnRunPaper" onclick="runBenchmark('paper')">Paper 10</button>
+        <button class="term-btn" id="btnRunGocj" onclick="runBenchmark('gocj')">GoCJ 24</button>
+        <button class="term-btn danger" id="btnStop" onclick="stopBenchmark()" disabled>■ Stop</button>
+        <button class="term-btn" onclick="clearTerminal()">Clear</button>
+      </div>
+      <div class="terminal-status" id="terminalStatus">
+        <span class="spinner"></span>
+        <span id="terminalStatusText">menjalankan benchmark...</span>
+      </div>
+      <div class="terminal-screen" id="terminalScreen"></div>
+    </div>
+  </section>
+
+  <!-- ============================================================= TABS -->
+  <section class="card">
+    <div class="tabs" id="scenarioTabs"></div>
+    <div id="dashboardBody">
+      <div class="empty-state">
+        <div class="big">📊</div>
+        <div id="emptyMessage">Memuat hasil benchmark...</div>
+      </div>
+    </div>
+
+    <!-- KPI + chart + gantt + tabel di-render di dalam #dashboardBody -->
+    <template id="dashboardTemplate">
+      <div style="padding-top:24px; display:flex; flex-direction:column; gap:24px;">
+        <div class="kpi-grid">
+          <div class="kpi-card" style="--kpi-accent: var(--accent-cctsa);">
+            <div class="kpi-label">Makespan Nyata Terbaik</div>
+            <div class="kpi-value" id="kpiMakespan">–</div>
+            <div class="kpi-meta" id="kpiMakespanMeta">–</div>
+          </div>
+          <div class="kpi-card" style="--kpi-accent: var(--accent-amber);">
+            <div class="kpi-label">Biaya Model Terendah</div>
+            <div class="kpi-value" id="kpiCost">–</div>
+            <div class="kpi-meta" id="kpiCostMeta">–</div>
+          </div>
+          <div class="kpi-card" style="--kpi-accent: var(--accent-cyan);">
+            <div class="kpi-label">Utilisasi Nyata Terbaik</div>
+            <div class="kpi-value" id="kpiUtil">–</div>
+            <div class="kpi-meta" id="kpiUtilMeta">–</div>
+          </div>
+          <div class="kpi-card" style="--kpi-accent: var(--accent-sufferage);">
+            <div class="kpi-label">Imbalance (DI) Terendah</div>
+            <div class="kpi-value" id="kpiDi">–</div>
+            <div class="kpi-meta" id="kpiDiMeta">–</div>
+          </div>
+          <div class="kpi-card" style="--kpi-accent: var(--accent-rr);">
+            <div class="kpi-label">Skala &amp; Uji Cobа</div>
+            <div class="kpi-value" id="kpiScale">–</div>
+            <div class="kpi-meta" id="kpiScaleMeta">–</div>
+          </div>
+        </div>
+
+        <div class="chart-grid">
+          <div class="chart-card">
+            <div class="chart-head">
+              <div class="chart-title">⏱️ Makespan: Nyata vs Prediksi</div>
+              <div class="chart-note">median (detik)</div>
+            </div>
+            <div class="chart-box"><canvas id="chartMakespan"></canvas></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-head">
+              <div class="chart-title">💰 Biaya Model (Σ MI × Cost Rate)</div>
+              <div class="chart-note">median · INR/MI-harga kertas</div>
+            </div>
+            <div class="chart-box"><canvas id="chartCost"></canvas></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-head">
+              <div class="chart-title">📈 Utilisasi vs Degree of Imbalance</div>
+              <div class="chart-note">% logis (kiri) · DI (kanan)</div>
+            </div>
+            <div class="chart-box"><canvas id="chartUtil"></canvas></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-head">
+              <div class="chart-title">🧩 Distribusi Tugas per Host</div>
+              <div class="chart-note">trial pertama</div>
+            </div>
+            <div class="chart-box"><canvas id="chartHost"></canvas></div>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-head">
+            <div class="chart-title">🕒 Gantt Eksekusi Nyata per Tugas</div>
+            <div class="chart-note">dispatch → finish (detik)</div>
+          </div>
+          <div class="gantt-controls">
+            <select class="select" id="ganttAlgoSelect" onchange="renderGantt()"></select>
+            <select class="select" id="ganttTrialSelect" onchange="renderGantt()"></select>
+            <div class="gantt-legend">
+              <span><i class="legend-swatch" style="background:linear-gradient(90deg,#10b981,#34d399)"></i> host-1 (VM1 250m · VM2 500m)</span>
+              <span><i class="legend-swatch" style="background:linear-gradient(90deg,#f59e0b,#fbbf24)"></i> host-2 (VM3 1000m · VM4 1500m)</span>
+            </div>
+          </div>
+          <div id="ganttContainer"></div>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-head">
+            <div class="chart-title">🏆 Tabel Peringkat Algoritma</div>
+            <div class="chart-note">diurut makespan nyata (median)</div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Algoritma</th>
+                  <th>Real Makespan</th>
+                  <th>Pred Makespan</th>
+                  <th>Throughput</th>
+                  <th>Biaya Model</th>
+                  <th>Utilisasi</th>
+                  <th>DI</th>
+                  <th>Planning</th>
+                  <th>Trial</th>
+                </tr>
+              </thead>
+              <tbody id="rankingTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </template>
+  </section>
+
+  <!-- =========================================================== EXPORT -->
+  <section class="card">
+    <div class="card-title">📦 Ekspor &amp; Info Lingkungan</div>
+    <div class="card-subtitle">Unduh hasil benchmark untuk laporan, atau periksa jejak reproduksinya.</div>
+    <div class="export-grid">
+      <div class="export-box">
+        <h4>📄 CSV Ringkasan</h4>
+        <p>Satu baris per skenario × algoritma: 20 metrik (median/min/max) + waktu planning.</p>
+        <a class="btn accent" href="/api/export/csv?type=summary">⬇ Unduh summary.csv</a>
+      </div>
+      <div class="export-box">
+        <h4>📄 CSV Alokasi Tugas</h4>
+        <p>Detail per tugas: prediksi, waktu nyata, CPU/cgroup, dan proof checksum bukti eksekusi.</p>
+        <a class="btn accent" href="/api/export/csv?type=allocations">⬇ Unduh allocations.csv</a>
+      </div>
+      <div class="export-box">
+        <h4>🔁 JSON Lengkap</h4>
+        <p>Dokumen <span style="font-family:var(--mono)">realworld_summary.json</span> (environment, method, summary, trials).</p>
+        <a class="btn" href="/api/results" target="_blank">Buka /api/results</a>
+      </div>
+    </div>
+    <div style="margin-top:18px;" class="meta-list" id="envMeta"></div>
+  </section>
+
+  <!-- ============================================================ TEAM -->
+  <section class="card" id="team">
+    <div class="card-title">👥 Anggota Kelompok 4 — SOKA C</div>
+    <div class="card-subtitle">Tim pengembang Real-World Sufferage Scheduling on Kubernetes.</div>
+    <div class="team-grid">
+      <div class="team-member">
+        <div class="team-avatar">MH</div>
+        <h4>M. Hikari Reiziq R.</h4>
+        <div class="nrp">5027241079</div>
+        <p class="role">Provider Cloud &amp; Briefing</p>
+      </div>
+      <div class="team-member">
+        <div class="team-avatar">IS</div>
+        <h4>I Dewa Made Satya R.</h4>
+        <div class="nrp">5027231051</div>
+        <p class="role">GitHub &amp; Inisialisasi 1 DC, 2 Host, 2 VM/Host</p>
+      </div>
+      <div class="team-member">
+        <div class="team-avatar">MR</div>
+        <h4>M. Rakha Hananditya R.</h4>
+        <div class="nrp">5027241015</div>
+        <p class="role">Implementasi Algoritma Sufferage</p>
+      </div>
+      <div class="team-member">
+        <div class="team-avatar">TA</div>
+        <h4>Theodorus Aaron Ugraha</h4>
+        <div class="nrp">5027241056</div>
+        <p class="role">Laporan Algoritma Sufferage</p>
+      </div>
+      <div class="team-member">
+        <div class="team-avatar">AW</div>
+        <h4>Ahmad Wildan Fawwaz</h4>
+        <div class="nrp">5027241001</div>
+        <p class="role">Testing, Dashboard &amp; Persiapan Demo</p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    SOKA · Real-World Sufferage on Kubernetes · Kelompok 4 — Demo 3<br />
+    <span class="mono">http://localhost:8090</span> · dashboard/server.py (Python stdlib) ·
+    sumber data: <span class="mono">results/realworld_summary.json</span>
+  </footer>
+</div>
+
+<script>
+"use strict";
+
+/* ==================================================================== state */
+const ALGO_COLORS = {
+  "CCTSA": "#10b981",
+  "Standard Sufferage": "#8b5cf6",
+  "Round Robin": "#3b82f6",
+};
+const DEFAULT_COLOR = "#06b6d4";
+const SCENARIO_LABELS = {
+  "paper_10": "📝 Paper · 10 Task / 4 VM",
+  "gocj_first_24": "☁️ GoCJ · 24 Task / 4 VM",
+};
+const HOST_COLORS = { "host-1": "#10b981", "host-2": "#f59e0b" };
+
+let SUMMARY = null;          // /api/summary
+let currentScenario = null;  // key skenario aktif
+let charts = {};             // instance Chart.js (di-destroy sebelum re-create)
+let pollTimer = null;
+let wasRunning = false;
+
+const fmt = {
+  s: (v) => (v == null ? "–" : Number(v).toFixed(3) + " s"),
+  sShort: (v) => (v == null ? "–" : Number(v).toFixed(2)),
+  num: (v, d = 2) => (v == null ? "–" : Number(v).toLocaleString("id-ID", { maximumFractionDigits: d })),
+  int: (v) => (v == null ? "–" : Number(v).toLocaleString("id-ID")),
+  pct: (v) => (v == null ? "–" : Number(v).toFixed(1) + " %"),
+  ms: (v) => (v == null ? "–" : (Number(v) * 1000).toFixed(2) + " ms"),
+};
+const algoColor = (name) => ALGO_COLORS[name] || DEFAULT_COLOR;
+const esc = (text) => String(text ?? "").replace(/[&<>"']/g, (c) =>
+  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+/* =============================================================== results */
+async function loadSummary() {
+  try {
+    const response = await fetch("/api/summary");
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}));
+      showEmpty(payload.error || "Hasil benchmark belum tersedia.");
+      return;
+    }
+    SUMMARY = await response.json();
+    const keys = Object.keys(SUMMARY.scenarios || {});
+    if (keys.length === 0) { showEmpty("File hasil kosong — jalankan benchmark dulu."); return; }
+    if (!keys.includes(currentScenario)) currentScenario = keys[0];
+    renderTabs(keys);
+    renderDashboard();
+    renderEnvMeta();
+  } catch (error) {
+    showEmpty("Gagal memuat /api/summary: " + error);
+  }
+}
+
+function showEmpty(message) {
+  document.getElementById("dashboardBody").innerHTML =
+    '<div class="empty-state"><div class="big">📭</div><div>' + esc(message) + "</div></div>";
+}
+
+function renderTabs(keys) {
+  const container = document.getElementById("scenarioTabs");
+  container.innerHTML = keys.map((key) =>
+    '<button class="tab-btn' + (key === currentScenario ? " active" : "") +
+    '" onclick="switchScenario(\'' + esc(key) + "')\">" + esc(SCENARIO_LABELS[key] || key) + "</button>"
+  ).join("");
+}
+
+function switchScenario(key) {
+  currentScenario = key;
+  renderTabs(Object.keys(SUMMARY.scenarios));
+  renderDashboard();
+}
+
+function scenarioData() {
+  return SUMMARY.scenarios[currentScenario];
+}
+
+/* ============================================================ dashboard */
+function renderDashboard() {
+  const data = scenarioData();
+  if (!data) return;
+
+  // pastikan template sudah ada di DOM
+  if (!document.getElementById("kpiMakespan")) {
+    const template = document.getElementById("dashboardTemplate");
+    document.getElementById("dashboardBody").innerHTML = "";
+    document.getElementById("dashboardBody").appendChild(template.content.cloneNode(true));
+  }
+
+  renderKpis(data);
+  renderCharts(data);
+  buildGanttControls(data);
+  renderGantt();
+  renderRanking(data);
+}
+
+function medianOf(entry, metric) {
+  return entry.metrics[metric] ? entry.metrics[metric].median : null;
+}
+
+function renderKpis(data) {
+  const entries = data.algorithms;
+  if (!entries.length) return;
+
+  const byReal = [...entries].sort((a, b) => medianOf(a, "real_makespan_s") - medianOf(b, "real_makespan_s"));
+  const best = byReal[0];
+  document.getElementById("kpiMakespan").textContent = fmt.s(medianOf(best, "real_makespan_s"));
+  document.getElementById("kpiMakespanMeta").innerHTML =
+    "<b>" + esc(best.algorithm) + "</b> · prediksi " + fmt.s(medianOf(best, "predicted_makespan_s"));
+
+  const byCost = [...entries].sort((a, b) => medianOf(a, "modeled_cost") - medianOf(b, "modeled_cost"));
+  const cheapest = byCost[0];
+  document.getElementById("kpiCost").textContent = fmt.int(medianOf(cheapest, "modeled_cost"), 0);
+  const rr = entries.find((e) => e.algorithm === "Round Robin");
+  const expensive = byCost[byCost.length - 1];
+  let costNote = "<b>" + esc(cheapest.algorithm) + "</b>";
+  if (rr && expensive && expensive.algorithm !== cheapest.algorithm && medianOf(rr, "modeled_cost") > 0) {
+    const saved = (1 - medianOf(cheapest, "modeled_cost") / medianOf(rr, "modeled_cost")) * 100;
+    costNote += " · " + (saved >= 0 ? "hemat " : "lebih ") + "<b>" + Math.abs(saved).toFixed(1) + "%</b> vs RR";
+  }
+  document.getElementById("kpiCostMeta").innerHTML = costNote;
+
+  const byUtil = [...entries].sort((a, b) => medianOf(b, "real_logical_utilization_pct") - medianOf(a, "real_logical_utilization_pct"));
+  document.getElementById("kpiUtil").textContent = fmt.pct(medianOf(byUtil[0], "real_logical_utilization_pct"));
+  document.getElementById("kpiUtilMeta").innerHTML =
+    "<b>" + esc(byUtil[0].algorithm) + "</b> · kapasitas CPU " + fmt.pct(medianOf(byUtil[0], "actual_cpu_capacity_utilization_pct"));
+
+  const byDi = [...entries].sort((a, b) => medianOf(a, "real_imbalance_di") - medianOf(b, "real_imbalance_di"));
+  document.getElementById("kpiDi").textContent = fmt.num(medianOf(byDi[0], "real_imbalance_di"), 3);
+  document.getElementById("kpiDiMeta").innerHTML = "<b>" + esc(byDi[0].algorithm) + "</b> · makin kecil makin seimbang";
+
+  const tasks = medianOf(entries[0], "tasks");
+  document.getElementById("kpiScale").textContent = fmt.int(tasks) + " × " + entries[0].trials;
+  document.getElementById("kpiScaleMeta").innerHTML =
+    "tugas per trial · <b>" + entries[0].trials + "</b> trial · 4 VM";
+}
+
+/* =============================================================== charts */
+function baseOptions() {
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { labels: { color: "#cbd5e1", font: { family: "'Plus Jakarta Sans', sans-serif", size: 11 } } },
+      tooltip: { backgroundColor: "rgba(2,6,23,0.95)", borderColor: "rgba(255,255,255,0.12)", borderWidth: 1 },
+    },
+    scales: {
+      x: { ticks: { color: "#94a3b8" }, grid: { color: "rgba(255,255,255,0.05)" } },
+      y: { ticks: { color: "#94a3b8" }, grid: { color: "rgba(255,255,255,0.05)" }, beginAtZero: true },
+    },
+  };
+}
+
+function destroyCharts() {
+  Object.values(charts).forEach((chart) => { try { chart.destroy(); } catch (_) {} });
+  charts = {};
+}
+
+function renderCharts(data) {
+  destroyCharts();
+  const entries = data.algorithms;
+  const labels = entries.map((e) => e.algorithm);
+  const colors = entries.map((e) => algoColor(e.algorithm));
+
+  charts.makespan = new Chart(document.getElementById("chartMakespan"), {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [
+        { label: "Real makespan (s)", data: entries.map((e) => medianOf(e, "real_makespan_s")), backgroundColor: colors, borderRadius: 8 },
+        { label: "Prediksi makespan (s)", data: entries.map((e) => medianOf(e, "predicted_makespan_s")), backgroundColor: "rgba(148,163,184,0.35)", borderRadius: 8 },
+      ],
+    },
+    options: baseOptions(),
+  });
+
+  charts.cost = new Chart(document.getElementById("chartCost"), {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [{ label: "Biaya model", data: entries.map((e) => medianOf(e, "modeled_cost")), backgroundColor: colors, borderRadius: 8 }],
+    },
+    options: baseOptions(),
+  });
+
+  const utilOptions = baseOptions();
+  utilOptions.scales.y.title = { display: true, text: "Utilisasi (%)", color: "#94a3b8" };
+  utilOptions.scales.y1 = {
+    position: "right",
+    ticks: { color: "#a78bfa" },
+    grid: { drawOnChartArea: false },
+    beginAtZero: true,
+    title: { display: true, text: "Degree of Imbalance", color: "#a78bfa" },
+  };
+  charts.util = new Chart(document.getElementById("chartUtil"), {
+    data: {
+      labels,
+      datasets: [
+        { type: "bar", label: "Utilisasi logis nyata (%)", data: entries.map((e) => medianOf(e, "real_logical_utilization_pct")), backgroundColor: "rgba(6,182,212,0.75)", borderRadius: 8, yAxisID: "y" },
+        { type: "line", label: "DI nyata", data: entries.map((e) => medianOf(e, "real_imbalance_di")), borderColor: "#a78bfa", backgroundColor: "#a78bfa", tension: 0.3, pointRadius: 5, yAxisID: "y1" },
+      ],
+    },
+    options: utilOptions,
+  });
+
+  // Distribusi tugas per host (trial pertama tiap algoritma)
+  const hosts = ["host-1", "host-2"];
+  const counts = Object.fromEntries(hosts.map((h) => [h, []]));
+  entries.forEach((entry) => {
+    const trials = (data.gantt && data.gantt[entry.algorithm]) || [];
+    const allocations = trials.length ? trials[0].allocations : [];
+    hosts.forEach((h) => { counts[h].push(allocations.filter((a) => a.host_id === h).length); });
+  });
+  charts.host = new Chart(document.getElementById("chartHost"), {
+    type: "bar",
+    data: {
+      labels,
+      datasets: hosts.map((h, i) => ({
+        label: h,
+        data: counts[h],
+        backgroundColor: i === 0 ? "rgba(16,185,129,0.8)" : "rgba(245,158,11,0.8)",
+        borderRadius: 6,
+      })),
+    },
+    options: {
+      ...baseOptions(),
+      scales: {
+        x: { stacked: true, ticks: { color: "#94a3b8" }, grid: { color: "rgba(255,255,255,0.05)" } },
+        y: { stacked: true, ticks: { color: "#94a3b8", precision: 0 }, grid: { color: "rgba(255,255,255,0.05)" }, beginAtZero: true },
+      },
+    },
+  });
+}
+
+/* ================================================================ gantt */
+function buildGanttControls(data) {
+  const algoSelect = document.getElementById("ganttAlgoSelect");
+  const trialSelect = document.getElementById("ganttTrialSelect");
+  const algorithms = Object.keys(data.gantt || {});
+  const previousAlgo = algoSelect.value;
+  algoSelect.innerHTML = algorithms
+    .map((a) => '<option value="' + esc(a) + '">' + esc(a) + "</option>")
+    .join("");
+  if (algorithms.includes(previousAlgo)) algoSelect.value = previousAlgo;
+
+  const trials = data.gantt[algoSelect.value] || [];
+  const previousTrial = trialSelect.value;
+  trialSelect.innerHTML = trials
+    .map((t) => '<option value="' + t.trial + '">Trial ' + t.trial + "</option>")
+    .join("");
+  if (trials.some((t) => String(t.trial) === previousTrial)) trialSelect.value = previousTrial;
+}
+
+function renderGantt() {
+  const data = scenarioData();
+  const container = document.getElementById("ganttContainer");
+  if (!data || !container) return;
+
+  const algo = document.getElementById("ganttAlgoSelect").value;
+  const trialNo = Number(document.getElementById("ganttTrialSelect").value);
+  buildGanttControls(data);
+  document.getElementById("ganttAlgoSelect").value = algo;
+
+  const trials = data.gantt[algo] || [];
+  const payload = trials.find((t) => t.trial === trialNo) || trials[0];
+  if (!payload || !payload.allocations.length) {
+    container.innerHTML = '<div class="gantt-empty">Belum ada alokasi untuk kombinasi ini.</div>';
+    return;
+  }
+
+  const allocations = [...payload.allocations].sort((a, b) => (a.actual_start_s ?? 0) - (b.actual_start_s ?? 0));
+  const maxFinish = Math.max(...allocations.map((a) => a.actual_finish_s || 0)) || 1;
+
+  const rows = allocations.map((a) => {
+    const start = a.actual_start_s ?? 0;
+    const finish = a.actual_finish_s ?? start;
+    const duration = Math.max(finish - start, 0);
+    const left = (start / maxFinish) * 100;
+    const width = Math.max((duration / maxFinish) * 100, 0.4);
+    const predicted = (a.predicted_finish_s ?? 0) - (a.predicted_start_s ?? 0);
+    const title =
+      a.task_name + " → " + a.vm_name + " (" + a.host_id + ") | nyata " +
+      duration.toFixed(3) + " s · prediksi " + predicted.toFixed(3) + " s";
+    return (
+      '<div class="gantt-row">' +
+      '<div class="gantt-label" title="' + esc(title) + '">T' + a.task_id + " · " + esc(a.vm_name) + "</div>" +
+      '<div class="gantt-track"><div class="gantt-bar ' + esc(a.host_id) + '" title="' + esc(title) +
+      '" style="left:' + left.toFixed(3) + "%;width:" + width.toFixed(3) + '%"></div></div>' +
+      "</div>"
+    );
+  }).join("");
+
+  container.innerHTML =
+    '<div class="gantt-timeline">' +
+    '<div class="gantt-axis"><span>0 s</span><span>' + (maxFinish / 2).toFixed(2) +
+    " s</span><span>" + maxFinish.toFixed(2) + " s</span></div>" +
+    rows +
+    "</div>";
+}
+
+/* =============================================================== ranking */
+function renderRanking(data) {
+  const tbody = document.getElementById("rankingTableBody");
+  const entries = [...data.algorithms].sort(
+    (a, b) => medianOf(a, "real_makespan_s") - medianOf(b, "real_makespan_s")
+  );
+  const best = {
+    cost: Math.min(...entries.map((e) => medianOf(e, "modeled_cost"))),
+    util: Math.max(...entries.map((e) => medianOf(e, "real_logical_utilization_pct"))),
+    di: Math.min(...entries.map((e) => medianOf(e, "real_imbalance_di"))),
+  };
+  tbody.innerHTML = entries.map((e, index) => {
+    const real = medianOf(e, "real_makespan_s");
+    const realStat = e.metrics.real_makespan_s;
+    const color = algoColor(e.algorithm);
+    const mark = (v, target) => (v === target ? " best-mark" : "");
+    return (
+      "<tr>" +
+      '<td><span class="rank-badge rank-' + (index + 1) + '">' + (index + 1) + "</span></td>" +
+      '<td class="cell-primary"><span class="algo-pill"><i class="algo-dot" style="background:' + color + '"></i>' +
+      esc(e.algorithm) + "</span></td>" +
+      "<td>" + fmt.s(real) +
+      ' <div class="cell-range">' + realStat.min.toFixed(2) + "–" + realStat.max.toFixed(2) + "</div></td>" +
+      "<td>" + fmt.s(medianOf(e, "predicted_makespan_s")) + "</td>" +
+      "<td>" + fmt.num(medianOf(e, "task_throughput_per_s"), 3) + " task/s</td>" +
+      '<td class="' + mark(medianOf(e, "modeled_cost"), best.cost) + '">' + fmt.int(medianOf(e, "modeled_cost"), 0) + "</td>" +
+      '<td class="' + mark(medianOf(e, "real_logical_utilization_pct"), best.util) + '">' +
+      fmt.pct(medianOf(e, "real_logical_utilization_pct")) + "</td>" +
+      '<td class="' + mark(medianOf(e, "real_imbalance_di"), best.di) + '">' +
+      fmt.num(medianOf(e, "real_imbalance_di"), 3) + "</td>" +
+      "<td>" + fmt.ms(e.planning_time_s.median) + "</td>" +
+      "<td>" + e.trials + "</td>" +
+      "</tr>"
+    );
+  }).join("");
+}
+
+/* ============================================================== status */
+async function loadStatus(force) {
+  try {
+    const response = await fetch("/api/status");
+    const status = await response.json();
+    renderStatus(status);
+  } catch (error) {
+    document.getElementById("topoOverview").innerHTML =
+      '<div class="stat-chip"><span class="dot red"></span> server status tidak terjangkau</div>';
+    if (force) console.error(error);
+  }
+}
+
+function renderStatus(status) {
+  const cluster = status.cluster || {};
+  const nodes = cluster.nodes || [];
+  const pods = cluster.pods || [];
+  const workers = status.workers || [];
+
+  const nodesReady = nodes.filter((n) => n.ready).length;
+  const podsReady = pods.filter((p) => p.ready && p.phase === "Running").length;
+  const workersReady = workers.filter((w) => w.reachable && w.status === "ready").length;
+
+  document.getElementById("topoOverview").innerHTML =
+    '<span class="stat-chip"><span class="dot ' + (nodesReady === nodes.length && nodes.length ? "green" : "red") +
+    '"></span> Nodes <b>' + nodesReady + "/" + nodes.length + "</b> Ready</span>" +
+    '<span class="stat-chip"><span class="dot ' + (podsReady === pods.length && pods.length ? "green" : "red") +
+    '"></span> Pods <b>' + podsReady + "/" + pods.length + "</b> Running</span>" +
+    '<span class="stat-chip"><span class="dot ' + (workersReady === 4 ? "green" : "red") +
+    '"></span> Worker sehat <b>' + workersReady + "/4</b></span>" +
+    '<span class="stat-chip">Context <b>kind-soka-datacenter</b></span>' +
+    '<span class="stat-chip"><span class="dot ' + (status.benchmark_running ? "amber" : "green") +
+    '"></span> Benchmark <b>' + (status.benchmark_running ? "BERJALAN" : "idle") + "</b></span>" +
+    (cluster.kubectl_ok
+      ? ""
+      : '<span class="stat-chip"><span class="dot red"></span> kubectl: ' +
+        esc(cluster.kubectl_error || "error") + "</span>");
+
+  const pill = document.getElementById("heroStatusPill");
+  const allHealthy = nodesReady === nodes.length && podsReady === pods.length && workersReady === 4 && nodes.length > 0;
+  pill.textContent = allHealthy ? "cluster sehat" : "perlu cek";
+  pill.className = "pill " + (allHealthy ? "ok" : "err");
+
+  // susun host -> node -> pod -> worker
+  const nodeByHost = {};
+  nodes.forEach((n) => { if (n.host_id) nodeByHost[n.host_id] = n; });
+  const podsByNode = {};
+  pods.forEach((p) => { (podsByNode[p.node] = podsByNode[p.node] || []).push(p); });
+
+  const workersByPod = {};
+  workers.forEach((w) => {
+    const podName = w.pod_hostname || "";
+    if (podName) workersByPod[podName] = w;
+  });
+
+  const hostIds = Object.keys(nodeByHost).sort();
+  const grid = document.getElementById("hostGrid");
+  if (!hostIds.length) {
+    grid.innerHTML = '<div class="host-card"><div class="host-head">⚠️ Tidak ada node terdeteksi — jalankan ./scripts/setup_cluster.sh</div></div>';
+    return;
+  }
+
+  grid.innerHTML = hostIds.map((hostId) => {
+    const node = nodeByHost[hostId];
+    const nodePods = podsByNode[node.name] || [];
+    const vmCards = nodePods.map((pod) => {
+      const worker = workersByPod[pod.name];
+      const healthy = !!worker && worker.reachable && worker.status === "ready" && pod.phase === "Running";
+      const stats = worker && worker.stats ? worker.stats : {};
+      return (
+        '<div class="vm-card' + (healthy ? "" : " down") + '">' +
+        '<div><div class="vm-name">' + esc(pod.name) + "</div>" +
+        '<div class="vm-endpoint">' + esc(worker ? worker.vm_name + " · " + worker.endpoint : pod.pod_ip || "-") + "</div></div>" +
+        '<span class="vm-status-badge ' + (healthy ? "ok" : "down") + '">' + (healthy ? "READY" : "DOWN") + "</span>" +
+        '<div class="vm-stats">' +
+        "<span>CPU <b>" + esc(pod.cpu_limit || "?") + "</b></span>" +
+        "<span>mem <b>" + esc(pod.memory_limit || "?") + "</b></span>" +
+        (worker ? "<span>cost/MI <b>" + worker.cost_per_mi + "</b></span>" : "") +
+        (worker ? "<span>MIPS <b>" + worker.nominal_mips + "</b></span>" : "") +
+        "<span>tugas selesai <b>" + (stats.tasks_completed ?? "-") + "</b></span>" +
+        "<span>antrean <b>" + (stats.queue_length ?? "-") + "</b></span>" +
+        "<span>service <b>" + (stats.total_service_s != null ? Number(stats.total_service_s).toFixed(1) : "-") + " s</b></span>" +
+        "<span>restart <b>" + pod.restarts + "</b></span>" +
+        "</div></div>"
+      );
+    }).join("");
+    return (
+      '<div class="host-card">' +
+      '<div class="host-head"><span>🖥️ ' + esc(node.host_name || hostId) +
+      '</span><span class="node-meta">' + esc(node.name) + " · " + esc(node.kubelet_version) +
+      " · " + esc(node.internal_ip || "") + "</span></div>" +
+      '<div class="vm-list">' + (vmCards || "<div class='vm-stats'>tidak ada pod</div>") + "</div></div>"
+    );
+  }).join("");
+}
+
+/* ============================================================ benchmark */
+function appendLog(line, cssClass) {
+  const screen = document.getElementById("terminalScreen");
+  const span = document.createElement("span");
+  if (cssClass) span.className = cssClass;
+  span.textContent = line + "\n";
+  screen.appendChild(span);
+  while (screen.childNodes.length > 800) screen.removeChild(screen.firstChild);
+  screen.scrollTop = screen.scrollHeight;
+}
+
+function clearTerminal() {
+  document.getElementById("terminalScreen").innerHTML = "";
+}
+
+function setRunningUi(running) {
+  document.getElementById("btnRunAll").disabled = running;
+  document.getElementById("btnRunPaper").disabled = running;
+  document.getElementById("btnRunGocj").disabled = running;
+  document.getElementById("btnStop").disabled = !running;
+  document.getElementById("terminalStatus").classList.toggle("visible", running);
+}
+
+async function runBenchmark(scenario) {
+  const trials = document.getElementById("trialsInput").value || "3";
+  appendLog("$ run_benchmark.py --scenario " + scenario + " --trials " + trials, "ts-dim");
+  try {
+    const response = await fetch("/api/run?scenario=" + encodeURIComponent(scenario) + "&trials=" + encodeURIComponent(trials), { method: "POST" });
+    const payload = await response.json();
+    appendLog(payload.message || response.statusText, response.ok ? "ts-ok" : "ts-err");
+    if (response.ok) { setRunningUi(true); startPolling(); }
+  } catch (error) {
+    appendLog("Gagal menghubungi server: " + error, "ts-err");
+  }
+}
+
+async function stopBenchmark() {
+  try {
+    const response = await fetch("/api/run/stop", { method: "POST" });
+    const payload = await response.json();
+    appendLog(payload.message || "stop", "ts-warn");
+  } catch (error) {
+    appendLog("Gagal menghentikan: " + error, "ts-err");
+  }
+}
+
+function startPolling() {
+  if (pollTimer) return;
+  pollTimer = setInterval(pollRunStatus, 700);
+}
+
+async function pollRunStatus() {
+  try {
+    const response = await fetch("/api/run/status");
+    const status = await response.json();
+    const screen = document.getElementById("terminalScreen");
+    const rendered = Number(screen.dataset.lines || 0);
+    const log = status.log || [];
+    if (log.length > rendered) {
+      log.slice(rendered).forEach((line) => {
+        const cls = /gagal|error|Traceback|FAILED/i.test(line) ? "ts-err"
+          : /selesai|Wrote|✓/i.test(line) ? "ts-ok"
+          : /^(Checking|Calibrating)/i.test(line) ? "ts-warn" : "";
+        appendLog(line, cls);
+      });
+      screen.dataset.lines = String(log.length);
+    }
+    setRunningUi(!!status.running);
+    if (!status.running) {
+      clearInterval(pollTimer);
+      pollTimer = null;
+      if (wasRunning && status.returncode === 0) {
+        appendLog("[dashboard] memuat ulang hasil...", "ts-dim");
+        await loadSummary();
+        await loadStatus(true);
+      }
+    }
+    wasRunning = !!status.running;
+  } catch (error) {
+    clearInterval(pollTimer);
+    pollTimer = null;
+  }
+}
+
+/* ============================================================ meta info */
+function renderEnvMeta() {
+  if (!SUMMARY) return;
+  const env = SUMMARY.environment || {};
+  const method = SUMMARY.method || {};
+  document.getElementById("envMeta").innerHTML =
+    "<div><b>created_at</b><br>" + esc(env.created_at || "-") + "</div>" +
+    "<div><b>git_commit</b><br>" + esc(String(env.git_commit || "-").slice(0, 12)) +
+      (env.git_worktree_dirty ? " (dirty)" : "") + "</div>" +
+    "<div><b>platform</b><br>" + esc(env.platform || "-") + "</div>" +
+    "<div><b>trials / urutan</b><br>" + esc(String(method.trials ?? "-")) + " · " +
+      esc(method.algorithm_order || "-") + "</div>" +
+    "<div><b>kalibrasi</b><br>" + esc(String(method.calibration_repeats ?? "-")) +
+      "× · " + esc(String(method.calibration_cpu_work ?? "-")) + " work · " +
+      esc(String(method.calibration_payload_mbit ?? "-")) + " Mbit</div>" +
+    "<div><b>cost definition</b><br>" + esc(method.cost_definition || "-") +
+      (method.cost_is_real_spend ? "" : " (bukan pengeluaran riil)") + "</div>";
+
+  document.getElementById("heroMeta").textContent =
+    "results/realworld_summary.json · " + (env.created_at || "-") +
+    " · commit " + String(env.git_commit || "-").slice(0, 8) +
+    (env.git_worktree_dirty ? " (dirty)" : "");
+}
+
+/* ================================================================= init */
+(async function init() {
+  appendLog("[dashboard] terhubung ke http://localhost:8090", "ts-dim");
+  appendLog("[dashboard] memuat /api/summary dan /api/status ...", "ts-dim");
+  await Promise.all([loadSummary(), loadStatus(true)]);
+  setInterval(() => loadStatus(false), 15000);
+  // sambungkan status polling yang mungkin sudah berjalan di server
+  fetch("/api/run/status")
+    .then((r) => r.json())
+    .then((status) => {
+      if (status.running) { setRunningUi(true); wasRunning = true; startPolling(); }
+      else if ((status.log || []).length) { document.getElementById("terminalScreen").dataset.lines = "0"; }
+    })
+    .catch(() => {});
+})();
+</script>
+</body>
+</html>
